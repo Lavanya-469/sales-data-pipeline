@@ -1,3 +1,5 @@
+"""Sales data analyzer module for processing pipeline data."""
+
 from setuptools import setup, find_packages
 
 setup(

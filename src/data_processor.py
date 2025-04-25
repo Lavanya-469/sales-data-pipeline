@@ -1,27 +1,48 @@
-import pandas as pd
+"""Module for processing and transforming sales data."""
+import logging
+from typing import Tuple
+
 import numpy as np
-from src.logger import setup_logger
-from src.exceptions import TransformationError
+import pandas as pd
 
-logger = setup_logger(__name__)
+from .exceptions import DataProcessingError
 
-def add_advanced_features(df):
-    """Add derived features to the data"""
+logger = logging.getLogger(__name__)
+
+def process_sales_data(raw_df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
+    """Process raw sales data into clean, analysis-ready format.
+
+    Args:
+        raw_df: Raw DataFrame from load_data()
+
+    Returns:
+        Tuple: (processed_df, summary_stats)
+        where summary_stats is a dictionary of key metrics
+
+    Raises:
+        DataProcessingError: If processing fails
+    """
     try:
-        logger.info("Adding advanced features")
+        logger.info("Processing %d rows of sales data", len(raw_df))
         
-        # Date features
-        df['Order_Year'] = df['Order Date'].dt.year
-        df['Order_Month'] = df['Order Date'].dt.month
-        df['Day_of_Week'] = df['Order Date'].dt.day_name()
+        processed_df = raw_df.copy()
+        processed_df = processed_df.dropna(subset=['sale_amount'])
+        processed_df['sale_date'] = pd.to_datetime(processed_df['sale_date'])
         
-        # Business features
-        df['Processing_Time'] = (df['Ship Date'] - df['Order Date']).dt.days
-        df['High_Value'] = df['Sales'] > df['Sales'].quantile(0.9)
+        summary_stats = {
+            'total_sales': np.sum(processed_df['sale_amount']),
+            'avg_sale': np.mean(processed_df['sale_amount']),
+            'max_sale': np.max(processed_df['sale_amount'])
+        }
         
-        logger.info("Successfully added advanced features")
-        return df
+        logger.info("Processing complete. Found %d valid records", len(processed_df))
+        return processed_df, summary_stats
         
+    except KeyError as e:
+        error_msg = f"Missing required column: {str(e)}"
+        logger.error(error_msg)
+        raise DataProcessingError(error_msg) from e
     except Exception as e:
-        logger.error(f"Feature engineering failed: {str(e)}")
-        raise TransformationError(f"Feature engineering failed: {str(e)}") from e
+        error_msg = f"Unexpected processing error: {str(e)}"
+        logger.error(error_msg)
+        raise DataProcessingError(error_msg) from e
