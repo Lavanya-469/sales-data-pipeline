@@ -1,5 +1,19 @@
 from pathlib import Path
 
+# Create all required directories
+required_dirs = [
+    "logs",
+    "output", 
+    "data",
+    "tests/test_data",
+    ".github/workflows"
+]
+
+for directory in required_dirs:
+    Path(directory).mkdir(parents=True, exist_ok=True)
+    
+from pathlib import Path
+
 # Create directories if they don't exist
 Path("data").mkdir(exist_ok=True)
 Path("output").mkdir(exist_ok=True)

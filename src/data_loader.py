@@ -1,31 +1,35 @@
 import pandas as pd
 from pathlib import Path
+from src.logger import setup_logger
+from src.exceptions import DataLoadingError, DataValidationError
+
+logger = setup_logger(__name__)
+
+def validate_data(df):
+    """Validate the loaded DataFrame"""
+    required_columns = ['Order ID', 'Order Date', 'Sales', 'Category']
+    if not all(col in df.columns for col in required_columns):
+        missing = [col for col in required_columns if col not in df.columns]
+        raise DataValidationError(f"Missing required columns: {missing}")
+    return True
 
 def load_data(file_path):
-    """Load CSV data into a pandas DataFrame"""
+    """Load data from file with validation"""
     try:
-        df = pd.read_csv(file_path)
-        print(f"Successfully loaded data with {len(df)} rows")
+        logger.info(f"Loading data from {file_path}")
+        
+        # Handle different file types
+        if str(file_path).endswith('.csv'):
+            df = pd.read_csv(file_path, parse_dates=['Order Date', 'Ship Date'])
+        elif str(file_path).endswith('.parquet'):
+            df = pd.read_parquet(file_path)
+        else:
+            raise DataLoadingError("Unsupported file format")
+        
+        validate_data(df)
+        logger.info(f"Successfully loaded {len(df)} records")
         return df
+        
     except Exception as e:
-        print(f"Error loading data: {e}")
-        return None
-
-def save_parquet(df, output_path):
-    """Save DataFrame as Parquet file"""
-    try:
-        df.to_parquet(output_path)
-        print(f"Data saved to {output_path}")
-    except Exception as e:
-        print(f"Error saving Parquet: {e}")
-
-if __name__ == "__main__":
-    # Dynamically build the path based on the script's location
-    data_path = Path(__file__).resolve().parent.parent / "data" / "train.csv"
-    
-    # Load the data
-    df = load_data(data_path)
-    
-    if df is not None:
-        # Save the data as a Parquet file
-        save_parquet(df, "../data/sales_data.parquet")
+        logger.error(f"Failed to load data: {str(e)}")
+        raise DataLoadingError(f"Data loading failed: {str(e)}") from e
